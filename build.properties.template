@@ -1,0 +1,7 @@
+TIMEZONE=America/Toronto
+AWS_REGION=us-east-1
+AWS_COMBINED_SECRET_NAME=your-secret-name/combined-secret
+OPTIMIZER_S3_BUCKET=your-s3-bucket-name
+OPTIMIZER_S3_KEY=subscriptions.xml
+HOST_TEMPSPACE_DIR=/tmp/media-optimizer/tempspace
+HOST_MODELS_DIR=/tmp/media-optimizer/models

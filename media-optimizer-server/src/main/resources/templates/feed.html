@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#0f1117"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Media Feed"/>
+  <title>Media Feed</title>
+  <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}" href="/favicon.ico"/>
+  <link rel="icon" type="image/png" sizes="32x32" th:href="@{/favicon-32x32.png}" href="/favicon-32x32.png"/>
+  <link rel="apple-touch-icon" th:href="@{/logo.png}" href="/logo.png"/>
+  <link rel="manifest" th:href="@{/manifest.json}" href="/manifest.json"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 1rem 1.25rem; border-bottom: 1px solid #1e2433; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
+    header .brand { display: flex; align-items: center; gap: 0.75rem; margin-right: 0.75rem; }
+    header h1 { font-size: 1.25rem; font-weight: 600; color: #a0aec0; letter-spacing: 0.05em; text-transform: uppercase; }
+
+    /* Header buttons */
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; }
+
+    /* Shared header button size */
+    .header-btn { background: none; border: 1px solid #2d3748; border-radius: 8px; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 2.2rem; height: 2.2rem; transition: border-color 0.15s, color 0.15s; }
+    .header-btn:hover { border-color: #4a5568; }
+
+    /* Filter button */
+    #filter-toggle { color: #90cdf4; font-size: 1rem; }
+    #filter-toggle:hover { color: #e2e8f0; }
+    #filter-toggle.has-filter { border-color: #4a90d9; }
+    #filter-toggle svg { flex-shrink: 0; }
+
+    /* Play All button */
+    #play-all-toggle { color: #90cdf4; font-size: 1.1rem; }
+    #play-all-toggle:hover { color: #e2e8f0; }
+    #play-all-toggle.playing { border-color: #ff6b6b; color: #ff6b6b; }
+
+    /* Submit button */
+    #submit-toggle { color: #90cdf4; font-size: 1rem; }
+    #submit-toggle:hover { color: #e2e8f0; }
+
+    /* Latest button */
+    #latest-toggle { color: #90cdf4; font-size: 1rem; }
+    #latest-toggle:hover { color: #e2e8f0; }
+    #latest-toggle.active { border-color: #4a90d9; }
+
+    /* Submit dialog */
+    #submit-dialog-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: flex-start; justify-content: center; padding-top: 5rem; }
+    #submit-dialog-backdrop.open { display: flex; }
+    #submit-dialog { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 10px; padding: 1rem 1.1rem; width: min(420px, 90vw); box-shadow: 0 8px 24px rgba(0,0,0,0.6); }
+    .submit-tabs { display: flex; gap: 0.25rem; margin-bottom: 0.9rem; border-bottom: 1px solid #2d3748; padding-bottom: 0.6rem; }
+    .submit-tab { background: none; border: none; padding: 0.3rem 0.7rem; font-size: 0.82rem; font-weight: 600; color: #718096; cursor: pointer; border-radius: 5px; transition: background 0.12s, color 0.12s; }
+    .submit-tab:hover { background: #2d3748; color: #e2e8f0; }
+    .submit-tab.active { background: #2d3748; color: #90cdf4; }
+    .submit-panel { display: none; }
+    .submit-panel.active { display: block; }
+    #submit-url { width: 100%; background: #0f1117; border: 1px solid #2d3748; border-radius: 6px; padding: 0.55rem 0.7rem; color: #e2e8f0; font-size: 0.9rem; outline: none; }
+    #submit-url:focus { border-color: #4a90d9; }
+    #submit-url.invalid { border-color: #fc8181; }
+    .submit-field { width: 100%; background: #0f1117; border: 1px solid #2d3748; border-radius: 6px; padding: 0.55rem 0.7rem; color: #e2e8f0; font-size: 0.9rem; outline: none; font-family: inherit; }
+    .submit-field:focus { border-color: #4a90d9; }
+    .submit-field.invalid { border-color: #fc8181; }
+    .submit-field + .submit-field { margin-top: 0.6rem; }
+    select.submit-field { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23718096'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.7rem center; padding-right: 2rem; cursor: pointer; }
+    textarea.submit-field { resize: vertical; min-height: 100px; line-height: 1.45; }
+    #submit-error { font-size: 0.75rem; color: #fc8181; margin-top: 0.35rem; min-height: 1em; }
+    .submit-slider-row { display: flex; align-items: center; gap: 0.65rem; margin-top: 0.85rem; }
+    .submit-slider-label { font-size: 0.75rem; color: #718096; white-space: nowrap; }
+    .submit-slider-value { font-size: 0.8rem; font-weight: 700; color: #90cdf4; min-width: 1.5rem; text-align: right; }
+    #submit-compression { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: linear-gradient(to right, #4a90d9 calc((var(--val) - 1) / 19 * 100%), #2d3748 calc((var(--val) - 1) / 19 * 100%)); outline: none; cursor: pointer; }
+    #submit-compression::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #90cdf4; border: 2px solid #0f1117; box-shadow: 0 0 0 2px #4a90d9; cursor: pointer; transition: box-shadow 0.15s; }
+    #submit-compression::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #90cdf4; border: 2px solid #0f1117; box-shadow: 0 0 0 2px #4a90d9; cursor: pointer; }
+    #submit-compression:focus::-webkit-slider-thumb { box-shadow: 0 0 0 3px #4a90d9; }
+    #submit-compression::-webkit-slider-runnable-track { border-radius: 2px; }
+    #submit-compression::-moz-range-track { height: 4px; border-radius: 2px; background: #2d3748; }
+    #submit-text-compression { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: linear-gradient(to right, #4a90d9 calc((var(--val) - 1) / 19 * 100%), #2d3748 calc((var(--val) - 1) / 19 * 100%)); outline: none; cursor: pointer; }
+    #submit-text-compression::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #90cdf4; border: 2px solid #0f1117; box-shadow: 0 0 0 2px #4a90d9; cursor: pointer; transition: box-shadow 0.15s; }
+    #submit-text-compression::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #90cdf4; border: 2px solid #0f1117; box-shadow: 0 0 0 2px #4a90d9; cursor: pointer; }
+    #submit-text-compression:focus::-webkit-slider-thumb { box-shadow: 0 0 0 3px #4a90d9; }
+    #submit-text-compression::-webkit-slider-runnable-track { border-radius: 2px; }
+    #submit-text-compression::-moz-range-track { height: 4px; border-radius: 2px; background: #2d3748; }
+    #submit-btn { width: 100%; margin-top: 1rem; padding: 0.6rem; background: #4a90d9; border: none; border-radius: 6px; color: #fff; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    #submit-btn:hover { background: #357abd; }
+    #submit-btn:active { background: #2a6099; }
+    #submit-text-btn { width: 100%; margin-top: 1rem; padding: 0.6rem; background: #4a90d9; border: none; border-radius: 6px; color: #fff; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    #submit-text-btn:hover { background: #357abd; }
+    #submit-text-btn:active { background: #2a6099; }
+
+    /* Dropdown panel */
+    .filter-panel-wrap { position: relative; }
+    #filter-panel {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 0.5rem);
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-radius: 10px;
+      padding: 0.5rem;
+      min-width: 180px;
+      z-index: 100;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    #filter-panel.open { display: block; }
+    .channel-btn { display: block; width: 100%; background: none; border: none; cursor: pointer; text-align: left; padding: 0.45rem 0.65rem; border-radius: 6px; font-size: 0.82rem; color: #718096; transition: background 0.12s, color 0.12s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .channel-btn:hover { background: #2d3748; color: #e2e8f0; }
+    .channel-btn.active { background: #2d3748; color: #90cdf4; font-weight: 600; }
+
+
+    main { flex: 1; max-width: 860px; width: 100%; padding: 1.5rem 1.25rem; margin: 0 auto; }
+    .item { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.1rem; position: relative; }
+    .item.played { background: #13151c; border-color: #1e2433; }
+    .item.played .item-title { color: #718096; }
+    .item.played .channel-badge { background: #1e2433; color: #4a5568; }
+    .item.played .item-duration { color: #3a5040; }
+    .item-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.55rem; }
+    .item-meta { display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap; flex: 1; }
+    .channel-badge { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; background: #2d3748; color: #90cdf4; padding: 0.2rem 0.55rem; border-radius: 4px; }
+    .item-date { font-size: 0.75rem; color: #718096; }
+    .item-duration { font-size: 0.75rem; color: #68d391; }
+    .item-original { font-size: 0.72rem; color: #4a5568; text-decoration: none; }
+    .item-original:hover { color: #718096; }
+    .item-original { font-size: 0.72rem; color: #4a5568; text-decoration: none; }
+    .item-original:hover { color: #718096; }
+    .item-title { font-size: 1rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.7rem; line-height: 1.4; }
+    .played-btn { background: none; border: 1px solid #2d3748; border-radius: 6px; width: 1.6rem; height: 1.6rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 0.75rem; flex-shrink: 0; transition: border-color 0.15s, color 0.15s, background 0.15s; }
+    .played-btn:hover { border-color: #68d391; color: #68d391; }
+    .played-btn.done { border-color: #3a5040; color: #3a5040; background: #1a2420; }
+    audio { width: 100%; height: 36px; accent-color: #63b3ed; }
+    .no-audio { font-size: 0.8rem; color: #4a5568; font-style: italic; }
+    .empty { text-align: center; padding: 4rem 1rem; color: #4a5568; }
+    .item { transition: opacity 0.3s ease; }
+    .item.fade-in { animation: fadeIn 0.4s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img th:src="@{/logo.png}" src="/logo.png" width="36" height="36" alt="Pipeline logo" style="border-radius:50%;"/>
+    <h1>Media Feed</h1>
+  </div>
+
+  <div class="header-actions">
+  <button id="play-all-toggle" class="header-btn" onclick="togglePlayAll()" title="Play all visible items">
+    <span id="play-all-emoji">&#9654;</span>
+  </button>
+  <button id="submit-toggle" class="header-btn" onclick="openSubmitDialog()" title="Submit video">&#8853;</button>
+  <button id="latest-toggle" class="header-btn" onclick="toggleLatest()" title="Latest (24h)">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/>
+      <path d="M7 4v3.25l2 1.25" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+  </button>
+  <div class="filter-panel-wrap" th:if="${not #lists.isEmpty(channels)}">
+    <button id="filter-toggle" class="header-btn" onclick="togglePanel()" aria-expanded="false" aria-controls="filter-panel" title="Filter by channel">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M1 3h13M3 7.5h9M5.5 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div id="filter-panel" role="menu">
+      <button class="channel-btn active" data-channel="all" onclick="selectChannel(this, 'all')">All channels</button>
+      <button th:each="ch : ${channels}"
+              class="channel-btn"
+              th:data-channel="${ch}"
+              th:text="${ch}"
+              onclick="selectChannel(this, this.dataset.channel)">Channel</button>
+    </div>
+  </div>
+  </div>
+
+</header>
+
+<div id="submit-dialog-backdrop" onclick="closeSubmitDialogBackdrop(event)">
+  <div id="submit-dialog">
+    <div class="submit-tabs">
+      <button class="submit-tab active" id="tab-video" onclick="switchSubmitTab('video')">YouTube</button>
+      <button th:if="${not #lists.isEmpty(submissionChannels)}" class="submit-tab" id="tab-text" onclick="switchSubmitTab('text')">Text</button>
+    </div>
+
+    <div class="submit-panel active" id="panel-video">
+      <input id="submit-url" type="url" placeholder="YouTube URL" autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <div id="submit-error"></div>
+      <div class="submit-slider-row">
+        <span class="submit-slider-label">Compression</span>
+        <input id="submit-compression" type="range" min="1" max="20" value="5" style="--val:5" oninput="this.style.setProperty('--val',this.value);document.getElementById('submit-compression-val').textContent=this.value+'x'"/>
+        <span id="submit-compression-val" class="submit-slider-value">5x</span>
+      </div>
+      <button id="submit-btn" onclick="submitVideo()">Submit</button>
+    </div>
+
+    <div class="submit-panel" id="panel-text" th:if="${not #lists.isEmpty(submissionChannels)}">
+      <select id="submit-text-channel" class="submit-field">
+        <option th:each="ch : ${submissionChannels}" th:value="${ch}" th:text="${ch}"></option>
+      </select>
+      <input id="submit-text-title" type="text" class="submit-field" placeholder="Title" autocomplete="off" spellcheck="false"/>
+      <textarea id="submit-text-body" class="submit-field" placeholder="Text content" spellcheck="false"></textarea>
+      <div id="submit-text-error"></div>
+      <div class="submit-slider-row">
+        <span class="submit-slider-label">Compression</span>
+        <input id="submit-text-compression" type="range" min="1" max="20" value="5" style="--val:5" oninput="this.style.setProperty('--val',this.value);document.getElementById('submit-text-compression-val').textContent=this.value+'x'"/>
+        <span id="submit-text-compression-val" class="submit-slider-value">5x</span>
+      </div>
+      <button id="submit-text-btn" onclick="submitText()">Submit</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div th:if="${#lists.isEmpty(items)}" class="empty">
+    <p>No feed items yet.</p>
+  </div>
+  <div th:each="item : ${items}"
+       th:class="${item.isPlayed()} ? 'item played' : 'item'"
+       th:data-channel="${item.channelName()}"
+       th:attr="data-ts-millis=${item.publishedAtMillis()},data-created-millis=${item.createdAtMillis()},data-channel-id=${item.channelId()},data-video-id=${item.videoId()}">
+    <div class="item-header">
+      <div class="item-meta">
+        <span class="channel-badge" th:text="${item.channelName()}">Channel</span>
+        <span class="item-date" th:attr="data-ts=${item.createdAtMillis()}"></span>
+        <span class="item-duration" th:if="${item.duration() != null}" th:text="${item.duration()}"></span>
+        <a th:if="${item.originalUrl() != null}"
+           class="item-original"
+           th:href="${item.originalUrl()}"
+           target="_blank" rel="noopener">(original)</a>
+      </div>
+      <button th:class="${item.isPlayed()} ? 'played-btn done' : 'played-btn'"
+              title="Mark as played"
+              onclick="markPlayedClick(this)">&#10003;</button>
+    </div>
+    <div class="item-title" th:text="${item.title()}">Title</div>
+    <audio th:if="${item.audioUrl() != null}" controls preload="none">
+      <source th:src="${item.audioUrl()}" type="audio/mpeg"/>
+    </audio>
+    <p th:if="${item.audioUrl() == null}" class="no-audio">Audio not available</p>
+  </div>
+</main>
+
+<script>
+  function timeAgo(ts) {
+    const ms = parseInt(ts, 10);
+    if (!ms || ms <= 0) return '';
+    const seconds = Math.floor((Date.now() - ms) / 1000);
+    const units = [
+      [31536000, 'year'], [2592000, 'month'], [604800, 'week'],
+      [86400, 'day'], [3600, 'hour'], [60, 'minute']
+    ];
+    for (const [div, name] of units) {
+      const n = Math.floor(seconds / div);
+      if (n >= 1) return `${n} ${name}${n > 1 ? 's' : ''} ago`;
+    }
+    return 'just now';
+  }
+  document.querySelectorAll('.item-date[data-ts]').forEach(el => {
+    el.textContent = timeAgo(el.dataset.ts);
+  });
+
+  var latestActive = true;
+  var LATEST_MS = 24 * 60 * 60 * 1000;
+
+  function isLatest(el) {
+    var ms = el.dataset.createdMillis;
+    return ms && (Date.now() - parseInt(ms, 10)) < LATEST_MS;
+  }
+
+  function applyVisibility(el, channel) {
+    var channelMatch = (channel === 'all' || el.dataset.channel === channel);
+    var latestMatch = !latestActive || isLatest(el);
+    el.style.display = (channelMatch && latestMatch) ? '' : 'none';
+  }
+
+  function activeChannel() {
+    const btn = document.querySelector('.channel-btn.active');
+    return btn ? (btn.dataset.channel || 'all') : 'all';
+  }
+
+  function refilter() {
+    var channel = activeChannel();
+    var main = document.querySelector('main');
+    var items = Array.from(main.querySelectorAll('.item'));
+    items.forEach(function(el) { applyVisibility(el, channel); });
+    items.sort(function(a, b) {
+      var ta = parseInt(a.dataset.createdMillis || '0', 10);
+      var tb = parseInt(b.dataset.createdMillis || '0', 10);
+      return tb - ta;
+    });
+    items.forEach(function(el) { main.appendChild(el); });
+  }
+
+  function toggleLatest() {
+    latestActive = !latestActive;
+    document.getElementById('latest-toggle').classList.toggle('active', latestActive);
+    refilter();
+  }
+
+  function togglePanel() {
+    const panel = document.getElementById('filter-panel');
+    const btn = document.getElementById('filter-toggle');
+    const open = panel.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open);
+  }
+
+  function selectChannel(btn, channel) {
+    // Close panel
+    document.getElementById('filter-panel').classList.remove('open');
+    document.getElementById('filter-toggle').setAttribute('aria-expanded', 'false');
+
+    // Update active state
+    document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    // Filter items
+    document.querySelectorAll('.item').forEach(function(el) { applyVisibility(el, channel); });
+
+    // Update toggle button appearance
+    const toggle = document.getElementById('filter-toggle');
+    toggle.classList.toggle('has-filter', channel !== 'all');
+  }
+
+  // Apply Latest filter by default on page load
+  document.getElementById('latest-toggle').classList.add('active');
+  refilter();
+
+  // Close panel when clicking outside
+  document.addEventListener('click', function(e) {
+    const wrap = document.querySelector('.filter-panel-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('filter-panel').classList.remove('open');
+      document.getElementById('filter-toggle').setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // Background feed refresh
+  (function() {
+    var FEED_CACHE_KEY = 'media-feed-cache-v1';
+
+    function itemKey(item) {
+      return (item.channelId || '') + '|' + (item.videoId || '');
+    }
+
+    function buildItemEl(item) {
+      const div = document.createElement('div');
+      div.className = 'item fade-in' + (item.isPlayed ? ' played' : '');
+      div.dataset.channel = item.channelName || '';
+      if (item.publishedAtMillis != null) div.dataset.tsMillis = item.publishedAtMillis;
+      if (item.createdAtMillis != null) div.dataset.createdMillis = item.createdAtMillis;
+      if (item.channelId) div.dataset.channelId = item.channelId;
+      if (item.videoId) div.dataset.videoId = item.videoId;
+
+      const header = document.createElement('div');
+      header.className = 'item-header';
+
+      const meta = document.createElement('div');
+      meta.className = 'item-meta';
+
+      const badge = document.createElement('span');
+      badge.className = 'channel-badge';
+      badge.textContent = item.channelName || '';
+      meta.appendChild(badge);
+
+      const dateSpan = document.createElement('span');
+      dateSpan.className = 'item-date';
+      if (item.createdAtMillis) {
+        dateSpan.dataset.ts = item.createdAtMillis;
+        dateSpan.textContent = timeAgo(item.createdAtMillis);
+      }
+      meta.appendChild(dateSpan);
+
+      if (item.duration) {
+        const dur = document.createElement('span');
+        dur.className = 'item-duration';
+        dur.textContent = item.duration;
+        meta.appendChild(dur);
+      }
+
+      if (item.originalUrl) {
+        const orig = document.createElement('a');
+        orig.className = 'item-original';
+        orig.href = item.originalUrl;
+        orig.target = '_blank';
+        orig.rel = 'noopener';
+        orig.textContent = '(original)';
+        meta.appendChild(orig);
+      }
+
+      header.appendChild(meta);
+
+      const playedBtn = document.createElement('button');
+      playedBtn.className = 'played-btn' + (item.isPlayed ? ' done' : '');
+      playedBtn.title = 'Mark as played';
+      playedBtn.innerHTML = '&#10003;';
+      playedBtn.setAttribute('onclick', 'markPlayedClick(this)');
+      header.appendChild(playedBtn);
+
+      div.appendChild(header);
+
+      const title = document.createElement('div');
+      title.className = 'item-title';
+      title.textContent = item.title || '';
+      div.appendChild(title);
+
+      if (item.audioUrl) {
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.preload = 'none';
+        const source = document.createElement('source');
+        source.src = item.audioUrl;
+        source.type = 'audio/mpeg';
+        audio.appendChild(source);
+        div.appendChild(audio);
+      } else {
+        const noAudio = document.createElement('p');
+        noAudio.className = 'no-audio';
+        noAudio.textContent = 'Audio not available';
+        div.appendChild(noAudio);
+      }
+
+      return div;
+    }
+
+    function applyItems(items, fromCache) {
+      const main = document.querySelector('main');
+      const empty = main.querySelector('.empty');
+      const channel = activeChannel();
+
+      const knownKeys = new Set(
+        Array.from(main.querySelectorAll('.item[data-channel-id]')).map(function(el) {
+          return (el.dataset.channelId || '') + '|' + (el.dataset.videoId || '');
+        }).filter(Boolean)
+      );
+
+      const newItems = items.filter(item => !knownKeys.has(itemKey(item)));
+
+      if (newItems.length > 0) {
+        if (empty) empty.remove();
+        const firstExisting = main.querySelector('.item');
+        newItems.forEach(function(item) {
+          const el = buildItemEl(item);
+          if (fromCache) el.classList.remove('fade-in');
+          applyVisibility(el, channel);
+          if (firstExisting) {
+            main.insertBefore(el, firstExisting);
+          } else {
+            main.appendChild(el);
+          }
+        });
+      }
+
+      if (!fromCache) {
+        // Refresh presigned audio URLs for items already on page (they expire)
+        const keyToItem = {};
+        items.forEach(item => { keyToItem[itemKey(item)] = item; });
+        main.querySelectorAll('.item[data-channel-id]').forEach(function(el) {
+          const k = (el.dataset.channelId || '') + '|' + (el.dataset.videoId || '');
+          if (!k || !keyToItem[k]) return;
+          const fresh = keyToItem[k];
+          const audio = el.querySelector('audio source');
+          if (audio && fresh.audioUrl && audio.src !== fresh.audioUrl) {
+            // Only swap if player is not actively playing
+            const audioEl = el.querySelector('audio');
+            if (audioEl && audioEl.paused) {
+              const t = audioEl.currentTime;
+              audio.src = fresh.audioUrl;
+              audioEl.load();
+              audioEl.currentTime = t;
+            }
+          }
+        });
+      }
+    }
+
+    // Pre-populate from cache so items appear instantly on open.
+    // Prefer the SW-written Cache API entry (kept fresh by background sync),
+    // fall back to localStorage for browsers without Cache API.
+    function loadFromCache() {
+      if ('caches' in window) {
+        caches.open('media-feed-v1').then(function(c) {
+          return c.match('feed-data-v1');
+        }).then(function(resp) {
+          if (resp) {
+            resp.json().then(function(items) { applyItems(items, true); });
+          } else {
+            try {
+              var ls = localStorage.getItem(FEED_CACHE_KEY);
+              if (ls) applyItems(JSON.parse(ls), true);
+            } catch (e) { /* ignore */ }
+          }
+        }).catch(function() {
+          try {
+            var ls = localStorage.getItem(FEED_CACHE_KEY);
+            if (ls) applyItems(JSON.parse(ls), true);
+          } catch (e) { /* ignore */ }
+        });
+      } else {
+        try {
+          var ls = localStorage.getItem(FEED_CACHE_KEY);
+          if (ls) applyItems(JSON.parse(ls), true);
+        } catch (e) { /* ignore */ }
+      }
+    }
+
+    loadFromCache();
+
+    // Fallback direct fetch — fires if the SW hasn't delivered an update within 3s
+    // (covers SW-swap transitions and browsers without SW support)
+    setTimeout(function() {
+      fetch('/api/feed')
+        .then(function(r) { return r.ok ? r.json() : Promise.reject(); })
+        .then(function(items) { applyItems(items, false); })
+        .catch(function() {});
+    }, 3000);
+  })();
+
+  // Play All queue
+  var playAllQueue = [];
+  var playAllIndex = 0;
+  var playAllActive = false;
+  var playAllBoundHandler = null;
+
+  function getVisibleAudios() {
+    return Array.from(document.querySelectorAll('.item'))
+      .filter(function(el) { return el.style.display !== 'none'; })
+      .map(function(el) { return el.querySelector('audio'); })
+      .filter(function(a) { return a != null; });
+  }
+
+  function stopPlayAll() {
+    playAllActive = false;
+    if (playAllQueue[playAllIndex]) {
+      var cur = playAllQueue[playAllIndex];
+      if (playAllBoundHandler) cur.removeEventListener('ended', playAllBoundHandler);
+      cur.pause();
+      cur.currentTime = 0;
+    }
+    playAllQueue = [];
+    playAllIndex = 0;
+    playAllBoundHandler = null;
+    document.getElementById('play-all-toggle').classList.remove('playing');
+    document.getElementById('play-all-emoji').innerHTML = '&#9654;';
+    clearMediaSession();
+  }
+
+  function playNext() {
+    if (!playAllActive || playAllIndex >= playAllQueue.length) {
+      stopPlayAll();
+      return;
+    }
+    var audio = playAllQueue[playAllIndex];
+    // Scroll item into view
+    var item = audio.closest('.item');
+    if (item) item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Load and play
+    audio.load();
+    audio.play().catch(function() { advanceQueue(); });
+    // Advance on end
+    playAllBoundHandler = function() { advanceQueue(); };
+    audio.addEventListener('ended', playAllBoundHandler, { once: true });
+  }
+
+  function advanceQueue() {
+    if (!playAllActive) return;
+    playAllIndex++;
+    playNext();
+  }
+
+  // Register service worker, wire up background sync and live message updates
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      // Request periodic background sync (OS-driven, best-effort)
+      if ('periodicSync' in reg) {
+        navigator.permissions.query({ name: 'periodic-background-sync' }).then(function(status) {
+          if (status.state === 'granted') {
+            reg.periodicSync.register('feed-refresh', { minInterval: 60 * 1000 });
+          }
+        }).catch(function() { /* permission API not supported */ });
+      }
+
+      // Ask the SW to fetch now — covers the case where the page opens before
+      // the periodic sync fires. The SW will postMessage back with fresh items.
+      function syncNow() {
+        navigator.serviceWorker.ready.then(function(r) {
+          r.active && r.active.postMessage({ type: 'SYNC_FEED' });
+        });
+      }
+
+      syncNow();
+      // Re-sync whenever the tab becomes visible again (e.g. switching back to the app)
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') syncNow();
+      });
+    });
+
+    // Receive fresh items pushed by the SW and apply them to the DOM
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'FEED_UPDATE') {
+        applyItems(e.data.items, false);
+      }
+    });
+  }
+
+  // Media Session API — OS lock screen / hardware button support
+  var mediaSessionAudio = null;
+
+  function getItemForAudio(audio) {
+    var item = audio.closest('.item');
+    if (!item) return null;
+    return {
+      title: (item.querySelector('.item-title') || {}).textContent || 'Media Feed',
+      channel: (item.querySelector('.channel-badge') || {}).textContent || 'Media Feed'
+    };
+  }
+
+  function updateMediaSession(audio) {
+    if (!('mediaSession' in navigator)) return;
+    var info = getItemForAudio(audio);
+    if (!info) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: info.title,
+      artist: info.channel,
+      album: 'Media Feed'
+    });
+    navigator.mediaSession.setActionHandler('play', function() {
+      audio.play();
+      navigator.mediaSession.playbackState = 'playing';
+    });
+    navigator.mediaSession.setActionHandler('pause', function() {
+      audio.pause();
+      navigator.mediaSession.playbackState = 'paused';
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', playAllActive ? function() {
+      if (playAllIndex > 0) {
+        if (playAllBoundHandler) playAllQueue[playAllIndex].removeEventListener('ended', playAllBoundHandler);
+        playAllQueue[playAllIndex].pause();
+        playAllQueue[playAllIndex].currentTime = 0;
+        playAllIndex--;
+        playNext();
+      }
+    } : null);
+    navigator.mediaSession.setActionHandler('nexttrack', playAllActive ? function() {
+      if (playAllBoundHandler) playAllQueue[playAllIndex].removeEventListener('ended', playAllBoundHandler);
+      playAllQueue[playAllIndex].pause();
+      playAllQueue[playAllIndex].currentTime = 0;
+      advanceQueue();
+    } : null);
+  }
+
+  function clearMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = 'none';
+    ['play', 'pause', 'previoustrack', 'nexttrack'].forEach(function(action) {
+      try { navigator.mediaSession.setActionHandler(action, null); } catch(e) {}
+    });
+  }
+
+  // Hook into every audio element (including dynamically added ones) via event delegation
+  document.addEventListener('play', function(e) {
+    if (e.target.tagName !== 'AUDIO') return;
+    mediaSessionAudio = e.target;
+    updateMediaSession(e.target);
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+  }, true);
+  document.addEventListener('pause', function(e) {
+    if (e.target.tagName !== 'AUDIO') return;
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+  }, true);
+  document.addEventListener('ended', function(e) {
+    if (e.target.tagName !== 'AUDIO') return;
+    if (!playAllActive) clearMediaSession();
+    var item = e.target.closest('.item');
+    if (item) markItemPlayed(item);
+  }, true);
+
+  function markItemPlayed(item) {
+    item.classList.add('played');
+    var btn = item.querySelector('.played-btn');
+    if (btn) btn.classList.add('done');
+    var channelId = item.dataset.channelId;
+    var videoId = item.dataset.videoId;
+    if (channelId && videoId) {
+      fetch('/api/feed/' + encodeURIComponent(channelId) + '/' + encodeURIComponent(videoId) + '/played', { method: 'POST' })
+        .catch(function() { /* silent */ });
+    }
+  }
+
+  function markPlayedClick(btn) {
+    var item = btn.closest('.item');
+    if (item) markItemPlayed(item);
+  }
+
+  // Submit video dialog
+  function extractYouTubeVideoId(url) {
+    try {
+      var u = new URL(url.trim());
+      // youtu.be/<id>
+      if (u.hostname === 'youtu.be') {
+        var id = u.pathname.slice(1).split('/')[0];
+        return id.length === 11 ? id : null;
+      }
+      // youtube.com/watch?v=<id>
+      if (u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com' || u.hostname === 'm.youtube.com') {
+        if (u.pathname === '/watch') {
+          var v = u.searchParams.get('v');
+          return v && v.length === 11 ? v : null;
+        }
+        // youtube.com/shorts/<id> or /embed/<id> or /v/<id>
+        var m = u.pathname.match(/^\/(shorts|embed|v)\/([A-Za-z0-9_-]{11})/);
+        if (m) return m[2];
+      }
+    } catch (e) { /* invalid URL */ }
+    return null;
+  }
+
+  var activeSubmitTab = 'video';
+
+  function switchSubmitTab(tab) {
+    activeSubmitTab = tab;
+    document.querySelectorAll('.submit-tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.submit-panel').forEach(function(p) { p.classList.remove('active'); });
+    var tabEl = document.getElementById('tab-' + tab);
+    var panelEl = document.getElementById('panel-' + tab);
+    if (tabEl) tabEl.classList.add('active');
+    if (panelEl) {
+      panelEl.classList.add('active');
+      var first = panelEl.querySelector('input, textarea, select');
+      if (first) setTimeout(function() { first.focus(); }, 50);
+    }
+  }
+
+  function openSubmitDialog() {
+    var input = document.getElementById('submit-url');
+    input.value = '';
+    input.classList.remove('invalid');
+    document.getElementById('submit-error').textContent = '';
+    var slider = document.getElementById('submit-compression');
+    slider.value = 5;
+    slider.style.setProperty('--val', 5);
+    document.getElementById('submit-compression-val').textContent = '5x';
+    var textSlider = document.getElementById('submit-text-compression');
+    if (textSlider) {
+      textSlider.value = 5;
+      textSlider.style.setProperty('--val', 5);
+      document.getElementById('submit-text-compression-val').textContent = '5x';
+    }
+    var titleEl = document.getElementById('submit-text-title');
+    if (titleEl) { titleEl.value = ''; titleEl.classList.remove('invalid'); }
+    var bodyEl = document.getElementById('submit-text-body');
+    if (bodyEl) { bodyEl.value = ''; bodyEl.classList.remove('invalid'); }
+    var textErrEl = document.getElementById('submit-text-error');
+    if (textErrEl) textErrEl.textContent = '';
+    switchSubmitTab('video');
+    document.getElementById('submit-dialog-backdrop').classList.add('open');
+    setTimeout(function() { input.focus(); }, 50);
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(function(text) {
+        if (input.value === '' && extractYouTubeVideoId(text)) {
+          input.value = text.trim();
+        }
+      }).catch(function() { /* permission denied or unavailable */ });
+    }
+  }
+
+  function closeSubmitDialog() {
+    document.getElementById('submit-dialog-backdrop').classList.remove('open');
+  }
+
+  function closeSubmitDialogBackdrop(e) {
+    if (e.target === document.getElementById('submit-dialog-backdrop')) closeSubmitDialog();
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSubmitDialog();
+  });
+
+  function submitVideo() {
+    var input = document.getElementById('submit-url');
+    var errorEl = document.getElementById('submit-error');
+    var videoId = extractYouTubeVideoId(input.value);
+    if (!videoId) {
+      input.classList.add('invalid');
+      errorEl.textContent = 'Enter a valid YouTube URL with a video ID.';
+      return;
+    }
+    input.classList.remove('invalid');
+    errorEl.textContent = '';
+    input.disabled = true;
+    var compressionFactor = parseInt(document.getElementById('submit-compression').value, 10);
+    fetch('/api/submit-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceType: 'YOUTUBE', videoId: videoId, compressionFactor: compressionFactor })
+    }).then(function(r) {
+      input.disabled = false;
+      if (r.ok) {
+        closeSubmitDialog();
+      } else {
+        input.classList.add('invalid');
+        errorEl.textContent = 'Submission failed (status ' + r.status + ').';
+      }
+    }).catch(function() {
+      input.disabled = false;
+      input.classList.add('invalid');
+      errorEl.textContent = 'Network error. Please try again.';
+    });
+  }
+
+  function submitText() {
+    var channelEl = document.getElementById('submit-text-channel');
+    var titleEl = document.getElementById('submit-text-title');
+    var bodyEl = document.getElementById('submit-text-body');
+    var errorEl = document.getElementById('submit-text-error');
+    var channelName = channelEl ? channelEl.value.trim() : '';
+    var title = titleEl ? titleEl.value.trim() : '';
+    var text = bodyEl ? bodyEl.value.trim() : '';
+    if (titleEl) { titleEl.classList.remove('invalid'); }
+    if (!text) { bodyEl.classList.add('invalid'); errorEl.textContent = 'Text is required.'; return; } else { bodyEl.classList.remove('invalid'); }
+    errorEl.textContent = '';
+    titleEl.disabled = true;
+    bodyEl.disabled = true;
+    var compressionFactor = parseInt(document.getElementById('submit-text-compression').value, 10);
+    fetch('/api/submit-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channelName: channelName, title: title, text: text, compressionFactor: compressionFactor })
+    }).then(function(r) {
+      titleEl.disabled = false;
+      bodyEl.disabled = false;
+      if (r.ok) {
+        closeSubmitDialog();
+      } else {
+        errorEl.textContent = 'Submission failed (status ' + r.status + ').';
+      }
+    }).catch(function() {
+      titleEl.disabled = false;
+      bodyEl.disabled = false;
+      errorEl.textContent = 'Network error. Please try again.';
+    });
+  }
+
+  document.getElementById('submit-url').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitVideo();
+  });
+
+  document.getElementById('submit-compression').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitVideo();
+  });
+
+  function togglePlayAll() {
+    if (playAllActive) {
+      stopPlayAll();
+      return;
+    }
+    var audios = getVisibleAudios();
+    if (audios.length === 0) return;
+    playAllQueue = audios;
+    playAllIndex = 0;
+    playAllActive = true;
+    document.getElementById('play-all-toggle').classList.add('playing');
+    document.getElementById('play-all-emoji').innerHTML = '&#9632;';
+    playNext();
+  }
+</script>
+</body>
+</html>

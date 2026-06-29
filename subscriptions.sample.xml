@@ -1,0 +1,280 @@
+<?xml version="1.0"?>
+<config>
+  <settings>
+    <compression_factor>10</compression_factor>
+    <minimum_narration_length_seconds>120</minimum_narration_length_seconds>
+    <whisper_model>tiny</whisper_model>
+    <whisper_cpu_pct>50</whisper_cpu_pct>
+    <feed_retention_days>2</feed_retention_days>
+    <fetch_period_seconds>1800</fetch_period_seconds>
+    <processing_period_seconds>119</processing_period_seconds>
+    <retain_processed_seconds>172800</retain_processed_seconds>
+    <narrator_model>claude-sonnet-4-6</narrator_model>
+    <digest_compression_factor>2</digest_compression_factor>
+    <morning_digest_time>07:00</morning_digest_time>
+    <evening_digest_time>18:00</evening_digest_time>
+    <timezone>America/New_York</timezone>
+    <title_prompt_ref>default_title</title_prompt_ref>
+    <default_video_submission_channel>INBOX</default_video_submission_channel>
+  </settings>
+  <subscriptions>
+    <!-- Example: RSS/Atom blog subscription (standalone) -->
+    <subscription>
+      <source_type>RSS_ATOM</source_type>
+      <channel_id>EXAMPLE_AUTHOR_1</channel_id>
+      <name>Example Author 1</name>
+      <compression_factor>2</compression_factor>
+      <prompt_ref>default_publications</prompt_ref>
+      <prompt_extra_ref>author_example1</prompt_extra_ref>
+      <digest_mode>false</digest_mode>
+    </subscription>
+
+    <!-- Example: YouTube subscription (standalone) -->
+    <subscription>
+      <source_type>YOUTUBE</source_type>
+      <channel_id>UCxxxxxxxxxxxxxxxxxxxxxxx</channel_id>
+      <name>Example YouTube Channel</name>
+      <min_video_length_seconds>300</min_video_length_seconds>
+      <compression_factor>10</compression_factor>
+      <prompt_ref>default</prompt_ref>
+      <digest_mode>false</digest_mode>
+    </subscription>
+
+    <!-- Example: manual submission channel (standalone) -->
+    <subscription>
+      <source_type>SUBMISSIONS</source_type>
+      <channel_id>ExampleBlog</channel_id>
+      <name>Example Blog</name>
+      <compression_factor>2</compression_factor>
+      <prompt_ref>default_publications</prompt_ref>
+      <digest_mode>false</digest_mode>
+    </subscription>
+
+    <!-- Example: Telegram channel with evening digest -->
+    <subscription>
+      <source_type>TELEGRAM</source_type>
+      <channel_id>example_telegram_channel</channel_id>
+      <name>Example Telegram Channel</name>
+      <compression_factor>1</compression_factor>
+      <prompt_ref>default_telegram</prompt_ref>
+      <digest_mode>true</digest_mode>
+      <digest_prompt_ref>digest_telegram</digest_prompt_ref>
+      <digest_delivery_time>EVENING</digest_delivery_time>
+    </subscription>
+
+    <!-- Example: virtual feed that aggregates multiple channels into a morning digest -->
+    <subscription>
+      <source_type>VIRTUAL</source_type>
+      <channel_id>virtual:example-digest</channel_id>
+      <name>Example Digest</name>
+      <compression_factor>20</compression_factor>
+      <prompt_ref>default</prompt_ref>
+      <digest_mode>true</digest_mode>
+      <digest_prompt_ref>digest</digest_prompt_ref>
+      <digest_delivery_time>MORNING</digest_delivery_time>
+    </subscription>
+
+    <!-- Example: YouTube channels feeding into the virtual digest above -->
+    <subscription>
+      <source_type>YOUTUBE</source_type>
+      <channel_id>UCyyyyyyyyyyyyyyyyyyyyyyyy</channel_id>
+      <name>Example Feed Channel 1</name>
+      <min_video_length_seconds>300</min_video_length_seconds>
+      <feeds_into>virtual:example-digest</feeds_into>
+    </subscription>
+    <subscription>
+      <source_type>YOUTUBE</source_type>
+      <channel_id>UCzzzzzzzzzzzzzzzzzzzzzzzz</channel_id>
+      <name>Example Feed Channel 2</name>
+      <min_video_length_seconds>300</min_video_length_seconds>
+      <feeds_into>virtual:example-digest</feeds_into>
+    </subscription>
+
+    <!-- Built-in: pinned text inbox for pasting raw text -->
+    <subscription>
+      <source_type>SUBMISSIONS</source_type>
+      <channel_id>TEXT_INBOX</channel_id>
+      <name>TEXT INBOX</name>
+      <compression_factor>5</compression_factor>
+      <prompt_ref>default_publications</prompt_ref>
+      <digest_mode>false</digest_mode>
+      <pinned>true</pinned>
+    </subscription>
+
+    <!-- Built-in: general inbox for ad-hoc YouTube URLs or any source -->
+    <subscription>
+      <source_type>ANY</source_type>
+      <channel_id>INBOX</channel_id>
+      <name>INBOX</name>
+      <min_video_length_seconds>0</min_video_length_seconds>
+      <compression_factor>5</compression_factor>
+      <prompt_ref>universal</prompt_ref>
+      <digest_mode>false</digest_mode>
+      <pinned>true</pinned>
+    </subscription>
+  </subscriptions>
+  <channelSources>
+    <!-- Map RSS_ATOM channel_id values to their feed URLs -->
+    <channelSource channelId="EXAMPLE_AUTHOR_1">https://example.com/author1/atom.xml</channelSource>
+  </channelSources>
+  <prompts>
+    <prompt name="default_title">Generate a short, punchy title (5–8 words) for this summary. Return only the title, no punctuation.
+
+  [[${summary}]]</prompt>
+
+    <prompt name="author_example1">The author of this material is Example Author 1, a software engineer and blogger.</prompt>
+
+    <prompt name="default_telegram">You are processing a Telegram channel post for a personal podcast feed.
+
+First, decide if this post has meaningful news payload. A post lacks meaningful payload if it is: a caption for an embedded video with no standalone information, a short promotional or subscription call-to-action, a greeting or filler with no factual content, or fewer than two sentences of actual information.
+
+If the post lacks meaningful payload, respond with exactly: EMPTY_MESSAGE
+
+If the post has meaningful payload, translate it into English and rewrite it as a short narration. Do not compress or summarize - preserve all factual detail. Write in plain prose, no bullet points, no emojis. This is being converted to audio, so do not reference the source post, links, or any media attachments.
+
+Start with a single headline on its own line: punchy, specific, no more than 10 words. Then a blank line, then the narration.
+
+Post:
+[(${transcript})]</prompt>
+
+    <prompt name="default_publications">You are processing a newsletter article for a personal podcast feed.
+
+[# th:if="${promptExtra != null and !promptExtra.isEmpty()}"][(${promptExtra})] [/]
+
+First, decide if this post has meaningful news payload. A post lacks meaningful payload if it is: a caption for an embedded video with no standalone information, a short promotional or subscription call-to-action, a greeting or filler with no factual content, or fewer than two sentences of actual information.
+
+If the post lacks meaningful payload, respond with exactly: EMPTY_MESSAGE
+
+If the post has meaningful payload, rewrite it as a short narration. Write in plain prose, no bullet points, no emojis. This is being converted to audio, so do not reference the source post, links, or any media attachments.
+
+Start with a single headline on its own line: punchy, specific, no more than 10 words. Then a blank line, then the narration.
+
+If the publication is funny or has a memorable way of putting something, keep it. Do not flatten the content. Start summary by naming the source.
+
+Target length: [(${wordTarget})] words or less. If there is no more informational content, you can stop early.
+
+Post:
+[(${transcript})]</prompt>
+
+    <prompt name="digest_publications">You are assembling a daily digest from newsletter publications for a personal podcast feed.
+
+The first line must be exactly: [(${channelName})] [(${timeOfDay})] Digest - [(${date})]
+Then a blank line, then the digest narration.
+
+Each section below is a summary of a separate newsletter article, each summary mentions the source. Your job is to distill articles into an overview by source name. Cover topics from one source in detail, then move to the next source. Transitions like "Now, the New York Times delivers a number of insightful articles" are welcome.
+
+Write in plain prose, no bullet points, no headers beyond the opening line. Casual but accurate, like briefing a friend on what actually matters today.
+
+This is being converted to audio - no references to "the post", "the channel", or any media.
+
+Target length: 1800 words maximum, not a target. Be concise.
+
+Summaries:
+[(${transcript})]</prompt>
+
+    <prompt name="universal">You are summarizing a YouTube video transcript into a narration for a personal podcast feed.
+
+First, silently decide whether this content is primarily INFORMATIONAL or EXPERIENTIAL:
+- INFORMATIONAL: analysis, commentary, tutorials, news, interviews, arguments, how-things-work explanations
+- EXPERIENTIAL: travel, personal journeys, lifestyle, challenges, adventures, food, places, daily life
+
+Then apply the matching approach below.
+
+---
+
+IF INFORMATIONAL:
+
+Write the narration in plain prose, no bullet points. Write it like you are telling a friend what you just watched - casual but accurate.
+
+When the transcript includes details that are hard to hold in memory - version numbers, file names, command syntax, hex values - replace them with plain human language that preserves the meaning.
+
+Assume the listener has a software engineering background. Do not explain basic concepts. Focus on what is novel, clever, or alarming about this specific story.
+
+Avoid emotional evaluations of the guests or presenters. Consolidate key lessons or actionable ideas in the end of the summary and wrap them with &lt;em&gt;...&lt;/em&gt; tags. These will receive audio emphasis.
+
+---
+
+IF EXPERIENTIAL:
+
+Write the narration in plain prose, no bullet points. Write it like you are telling a friend what you just watched - casual, warm, and vivid.
+
+Your job is to convey the experience, not just the information. Preserve the emotional texture - what it felt like, what moved or surprised the person, what atmosphere came through.
+
+If the speaker is funny or has a memorable way of putting something, keep it. Do not flatten their voice.
+
+---
+
+Start with a single headline on its own line - punchy, specific, no more than 10 words. Then a blank line, then the narration. No other headers.
+
+Ignore any sponsor segments, advertisements, or promotional mentions.
+
+This is being converted to audio. Remove any references to the source video itself.
+
+[# th:if="${promptExtra != null and !promptExtra.isEmpty()}"][(${promptExtra})] [/]
+Target length: [(${wordTarget})] words. This is a firm target - do not stop early.
+
+Transcript:
+[(${transcript})]</prompt>
+
+    <prompt name="default">You are summarizing a YouTube video transcript into a narration for a personal podcast feed.
+
+Start with a single headline on its own line - punchy, specific, no more than 10 words. Then a blank line, then the narration. No other headers.
+
+Write the narration in plain prose, no bullet points. Write it like you are telling a friend what you just watched - casual but accurate.
+
+When the transcript includes details that are hard to hold in memory - version numbers, file names, command syntax, hex values - replace them with plain human language that preserves the meaning.
+
+Assume the listener has a software engineering background. Do not explain basic concepts. Focus on what is novel, clever, or alarming about this specific story.
+
+Ignore any sponsor segments, advertisements, or promotional mentions.
+
+This is being converted to audio. Remove any references to the source video itself.
+
+Consolidate key lessons or actionable ideas in the end of the summary and wrap them with &lt;em&gt;...&lt;/em&gt; tags. These will receive audio emphasis.
+
+If the speaker is funny or has a memorable way of putting something, keep it. Do not flatten their voice.
+[# th:if="${promptExtra != null and !promptExtra.isEmpty()}"][(${promptExtra})] [/]
+Target length: [(${wordTarget})] words. This is a firm target - do not stop early.
+
+Transcript:
+[(${transcript})]</prompt>
+
+    <prompt name="digest_telegram">You are assembling a daily digest from Telegram channel posts for a personal podcast feed.
+
+The first line must be exactly: [(${channelName})] [(${timeOfDay})] Digest - [(${date})]
+Then a blank line, then the digest narration.
+
+Each section below is a translated narration of a separate Telegram post. Every post has a time, so try capturing a developing narrative, not just facts. Your job is to distill them into a single flowing briefing.
+
+Filter aggressively. Skip purely tactical minutiae. Keep: developing stories with meaningful arc or escalation, significant decisions and announcements, strategic or operational shifts, diplomatic moves, high-level statements from named officials or governments.
+
+Where multiple posts cover the same developing story, merge them into a single coherent update.
+
+Write in plain prose, no bullet points, no headers beyond the opening line. Casual but accurate.
+
+This is being converted to audio - no references to "the post", "the channel", or any media.
+
+Target length: 600 words maximum, not a target. Be concise.
+
+Summaries:
+[(${transcript})]</prompt>
+
+    <prompt name="digest">You are assembling a daily digest from multiple video summaries for a personal podcast feed.
+
+The first line must be exactly: [(${channelName})] [(${timeOfDay})] Digest - [(${date})]
+Then a blank line, then the digest narration.
+
+Each section below is a summary of a separate video from the same channel. Deduplicate aggressively - if the same idea, event, or argument appears more than once, include it only once.
+
+Weave the remaining material into a single flowing narrative. Find connecting themes where they exist, but preserve each unique story's key points.
+
+Write in plain prose, casual but accurate, as if briefing a friend on today's most interesting content from this channel.
+
+This is being converted to audio - no bullet points, no headers beyond the opening line, no references to "the video", "the summary", or "the clip".
+
+Target length: [(${wordTarget})] words.
+
+Summaries:
+[(${transcript})]</prompt>
+  </prompts>
+</config>
