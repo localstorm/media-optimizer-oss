@@ -83,11 +83,11 @@ TIMEZONE=America/Toronto
 # AWS region where Secrets Manager secrets live
 AWS_REGION=us-east-2
 
-# Secrets Manager secret name that holds all credentials (AWS keypair + API keys).
-# The secret must be a JSON object — see the "Secrets used" section below for the expected keys.
-# These credentials are baked into the Docker image as credentials.sh and used at runtime
-# to fetch subscriptions.xml from S3, write processed results back, and call external APIs.
-AWS_COMBINED_SECRET_NAME=media-optimizer-aws-user/aws-keypair
+# Secrets Manager secret name that holds ALL credentials (not just AWS keys — also
+# Anthropic, Google TTS, YouTube, and Telegram). The secret must be a JSON object
+# whose keys match the table in the "Secrets used" section below.
+# These credentials are baked into the Docker image as credentials.sh and sourced at runtime.
+AWS_COMBINED_SECRET_NAME=media-optimizer/all-credentials
 
 # S3 bucket and key where subscriptions.xml lives
 OPTIMIZER_S3_BUCKET=your-s3-bucket-name
@@ -134,57 +134,68 @@ Expected secret JSON shape:
 
 ### Full example
 
+See [`subscriptions.sample.xml`](subscriptions.sample.xml) for a complete working example. Condensed structure:
+
 ```xml
+<?xml version="1.0"?>
 <config>
   <settings>
     <compression_factor>10</compression_factor>
     <minimum_narration_length_seconds>120</minimum_narration_length_seconds>
     <whisper_model>tiny</whisper_model>
     <whisper_cpu_pct>50</whisper_cpu_pct>
-    <feed_retention_days>4</feed_retention_days>
+    <feed_retention_days>2</feed_retention_days>
     <fetch_period_seconds>1800</fetch_period_seconds>
     <processing_period_seconds>119</processing_period_seconds>
     <retain_processed_seconds>172800</retain_processed_seconds>
     <narrator_model>claude-sonnet-4-6</narrator_model>
     <digest_compression_factor>2</digest_compression_factor>
-    <morning_digest_time>06:30</morning_digest_time>
-    <evening_digest_time>17:00</evening_digest_time>
-    <timezone>America/Toronto</timezone>
+    <morning_digest_time>07:00</morning_digest_time>
+    <evening_digest_time>18:00</evening_digest_time>
+    <timezone>America/New_York</timezone>
+    <title_prompt_ref>default_title</title_prompt_ref>
+    <default_video_submission_channel>INBOX</default_video_submission_channel>
   </settings>
 
   <subscriptions>
 
-    <!-- Standard YouTube channel — individual episodes -->
+    <!-- RSS/Atom blog subscription — individual episodes -->
     <subscription>
-      <source_type>YOUTUBE</source_type>
-      <channel_id>UC9x0AN7BWHpCDHSm9NiJFJQ</channel_id>
-      <name>Network Chuck</name>
-      <min_video_length_seconds>300</min_video_length_seconds>
-      <compression_factor>10</compression_factor>
-      <prompt_ref>default</prompt_ref>
-      <prompt_extra_ref>author_chuck</prompt_extra_ref>
+      <source_type>RSS_ATOM</source_type>
+      <channel_id>EXAMPLE_AUTHOR_1</channel_id>
+      <name>Example Author 1</name>
+      <compression_factor>2</compression_factor>
+      <prompt_ref>default_publications</prompt_ref>
+      <prompt_extra_ref>author_example1</prompt_extra_ref>
       <digest_mode>false</digest_mode>
     </subscription>
 
-    <!-- Channel with digest mode — summaries batched and delivered once daily -->
+    <!-- Standard YouTube channel — individual episodes -->
     <subscription>
       <source_type>YOUTUBE</source_type>
-      <channel_id>UCVkSF37pPXkZbElFjBwUsEA</channel_id>
-      <name>The NewAtlas</name>
-      <min_video_length_seconds>480</min_video_length_seconds>
-      <compression_factor>5</compression_factor>
+      <channel_id>UCxxxxxxxxxxxxxxxxxxxxxxx</channel_id>
+      <name>Example YouTube Channel</name>
+      <min_video_length_seconds>300</min_video_length_seconds>
+      <compression_factor>10</compression_factor>
       <prompt_ref>default</prompt_ref>
-      <prompt_extra_ref>author_berletic</prompt_extra_ref>
-      <digest_mode>true</digest_mode>
-      <digest_prompt_ref>digest</digest_prompt_ref>
-      <digest_delivery_time>MORNING</digest_delivery_time>
+      <digest_mode>false</digest_mode>
+    </subscription>
+
+    <!-- Manual submission channel -->
+    <subscription>
+      <source_type>SUBMISSIONS</source_type>
+      <channel_id>ExampleBlog</channel_id>
+      <name>Example Blog</name>
+      <compression_factor>2</compression_factor>
+      <prompt_ref>default_publications</prompt_ref>
+      <digest_mode>false</digest_mode>
     </subscription>
 
     <!-- Telegram channel with evening digest -->
     <subscription>
       <source_type>TELEGRAM</source_type>
-      <channel_id>SomeTelegramChannel</channel_id>
-      <name>My Telegram Feed</name>
+      <channel_id>example_telegram_channel</channel_id>
+      <name>Example Telegram Channel</name>
       <compression_factor>1</compression_factor>
       <prompt_ref>default_telegram</prompt_ref>
       <digest_mode>true</digest_mode>
@@ -192,49 +203,66 @@ Expected secret JSON shape:
       <digest_delivery_time>EVENING</digest_delivery_time>
     </subscription>
 
-    <!-- Virtual feed — aggregates multiple channels into one digest -->
+    <!-- Virtual feed — aggregates multiple channels into a morning digest -->
     <subscription>
       <source_type>VIRTUAL</source_type>
-      <channel_id>virtual:my-feed</channel_id>
-      <name>My Aggregated Feed</name>
-      <compression_factor>10</compression_factor>
+      <channel_id>virtual:example-digest</channel_id>
+      <name>Example Digest</name>
+      <compression_factor>20</compression_factor>
       <prompt_ref>default</prompt_ref>
       <digest_mode>true</digest_mode>
       <digest_prompt_ref>digest</digest_prompt_ref>
       <digest_delivery_time>MORNING</digest_delivery_time>
     </subscription>
 
-    <!-- Channel that feeds into a virtual feed instead of appearing directly -->
+    <!-- Channels that feed into the virtual digest above -->
     <subscription>
       <source_type>YOUTUBE</source_type>
-      <channel_id>UCsBjURrPoezykLs9EqgamOA</channel_id>
-      <name>Some Channel</name>
+      <channel_id>UCyyyyyyyyyyyyyyyyyyyyyyyy</channel_id>
+      <name>Example Feed Channel 1</name>
       <min_video_length_seconds>300</min_video_length_seconds>
-      <compression_factor>1</compression_factor>
-      <prompt_ref>default</prompt_ref>
-      <feeds_into>virtual:my-feed</feeds_into>
+      <feeds_into>virtual:example-digest</feeds_into>
     </subscription>
 
-    <!-- INBOX — special always-present feed for manually submitted URLs -->
+    <!-- Built-in: pinned text inbox for pasting raw text -->
+    <subscription>
+      <source_type>SUBMISSIONS</source_type>
+      <channel_id>TEXT_INBOX</channel_id>
+      <name>TEXT INBOX</name>
+      <compression_factor>5</compression_factor>
+      <prompt_ref>default_publications</prompt_ref>
+      <digest_mode>false</digest_mode>
+      <pinned>true</pinned>
+    </subscription>
+
+    <!-- Built-in: general inbox for ad-hoc YouTube URLs or any source -->
     <subscription>
       <source_type>ANY</source_type>
       <channel_id>INBOX</channel_id>
       <name>INBOX</name>
       <min_video_length_seconds>0</min_video_length_seconds>
       <compression_factor>5</compression_factor>
-      <prompt_ref>default</prompt_ref>
+      <prompt_ref>universal</prompt_ref>
       <digest_mode>false</digest_mode>
       <pinned>true</pinned>
     </subscription>
 
   </subscriptions>
 
+  <!-- Maps RSS_ATOM channel_id values to their feed URLs -->
+  <channelSources>
+    <channelSource channelId="EXAMPLE_AUTHOR_1">https://example.com/author1/atom.xml</channelSource>
+  </channelSources>
+
   <prompts>
     <!-- Named prompt fragments referenced by prompt_extra_ref -->
-    <prompt name="author_chuck">The author of this material is Network Chuck. If you need to refer to presenter, use this name</prompt>
+    <prompt name="author_example1">The author of this material is Example Author 1, a software engineer and blogger.</prompt>
 
     <!-- Named base prompts referenced by prompt_ref -->
-    <prompt name="default">... full prompt text ...</prompt>
+    <prompt name="default_title">... title generation prompt ...</prompt>
+    <prompt name="default">... YouTube narration prompt ...</prompt>
+    <prompt name="universal">... universal narration prompt ...</prompt>
+    <prompt name="default_publications">... newsletter/blog narration prompt ...</prompt>
     <prompt name="digest">... digest assembly prompt ...</prompt>
     <prompt name="default_telegram">... telegram post prompt ...</prompt>
     <prompt name="digest_telegram">... telegram digest prompt ...</prompt>
@@ -248,8 +276,10 @@ Expected secret JSON shape:
 
 | `source_type` | Description |
 |---|---|
-| `YOUTUBE` | Polls a YouTube channel for new videos via the YouTube Data API. `channel_id` is the YouTube channel ID (e.g. `UC9x0AN7BWHpCDHSm9NiJFJQ`). |
-| `TELEGRAM` | Reads posts from a Telegram channel via `tdl`. `channel_id` is the channel username (e.g. `RVvoenkor`). No polling — `tdl` exports recent messages on each cycle. |
+| `YOUTUBE` | Polls a YouTube channel for new videos via the YouTube Data API. `channel_id` is the YouTube channel ID (e.g. `UCxxxxxxxxxxxxxxxxxxxxxxx`). |
+| `RSS_ATOM` | Polls an RSS or Atom feed. `channel_id` is a logical name; the actual feed URL is declared in `<channelSources>`. |
+| `TELEGRAM` | Reads posts from a Telegram channel via `tdl`. `channel_id` is the channel username. No polling — `tdl` exports recent messages on each cycle. |
+| `SUBMISSIONS` | A manually-curated feed. No automatic polling; items are submitted via the API or dashboard. `channel_id` is a logical name (e.g. `ExampleBlog`). The reserved id `TEXT_INBOX` accepts raw pasted text. |
 | `VIRTUAL` | An aggregation feed with no source of its own. Collects narrations from other subscriptions that have `feeds_into` pointing at this feed's `channel_id`. `channel_id` must be `virtual:<name>`. |
 | `ANY` | Accepts manually submitted URLs of any type. Used for the special `INBOX` feed. No automatic polling. |
 
@@ -258,16 +288,16 @@ Expected secret JSON shape:
 | Field | Required | Description |
 |---|---|---|
 | `source_type` | yes | See above |
-| `channel_id` | yes | YouTube channel ID, Telegram handle, `virtual:<name>` for virtual feeds, or `INBOX` for the inbox feed |
+| `channel_id` | yes | YouTube channel ID, logical name for RSS/SUBMISSIONS, Telegram handle, `virtual:<name>` for virtual feeds, `INBOX` / `TEXT_INBOX` for built-in inboxes |
 | `name` | yes | Display name in the dashboard |
 | `min_video_length_seconds` | no | Skip videos shorter than this (YouTube only) |
-| `compression_factor` | yes | Divide transcript word count by this to get target narration length (higher = shorter) |
+| `compression_factor` | no | Divide transcript word count by this to get target narration length (higher = shorter). Falls back to the global `<settings>` value if omitted. |
 | `prompt_ref` | yes | Name of the base prompt in `<prompts>` |
 | `prompt_extra_ref` | no | Name of an extra prompt fragment appended to the base (e.g. author context) |
 | `digest_mode` | no | If `true`, summaries are batched and delivered as a single digest |
 | `digest_prompt_ref` | no | Prompt used when assembling the digest |
 | `digest_delivery_time` | no | `MORNING` or `EVENING` — which scheduled slot to deliver the digest |
-| `feeds_into` | no | `virtual:<name>` — route episodes into a virtual feed instead of directly to the subscriber |
+| `feeds_into` | no | `virtual:<name>` — route episodes into a virtual feed instead of appearing as a standalone feed |
 | `pinned` | no | If `true`, this feed is always shown first in the dashboard |
 
 ### Settings fields
@@ -284,9 +314,23 @@ Expected secret JSON shape:
 | `retain_processed_seconds` | How long to keep processed audio files on disk |
 | `narrator_model` | Claude model ID for narration |
 | `digest_compression_factor` | Compression factor used when assembling digests |
-| `morning_digest_time` | Time to deliver MORNING digests (24h, e.g. `06:30`) |
-| `evening_digest_time` | Time to deliver EVENING digests (24h, e.g. `17:00`) |
+| `morning_digest_time` | Time to deliver MORNING digests (24h, e.g. `07:00`) |
+| `evening_digest_time` | Time to deliver EVENING digests (24h, e.g. `18:00`) |
 | `timezone` | Timezone for digest scheduling |
+| `title_prompt_ref` | Name of the prompt in `<prompts>` used to generate episode titles |
+| `default_video_submission_channel` | `channel_id` of the subscription that receives ad-hoc video URL submissions (defaults to `INBOX`) |
+
+### channelSources
+
+`<channelSources>` maps the logical `channel_id` values used by `RSS_ATOM` subscriptions to their actual feed URLs:
+
+```xml
+<channelSources>
+  <channelSource channelId="EXAMPLE_AUTHOR_1">https://example.com/author1/atom.xml</channelSource>
+</channelSources>
+```
+
+Each `channelSource` entry pairs a `channelId` attribute (matching the subscription's `<channel_id>`) with the feed URL as its text content.
 
 ## Prompt customization
 
