@@ -22,6 +22,10 @@ This is a multi-module Maven project:
 | `media-optimizer-dashboard` | Dashboard / CLI tooling |
 | `media-optimizer-docker` | Docker build + run scripts |
 
+## Infrastructure
+
+The application requires three DynamoDB tables. See [DDB.md](DDB.md) for the full schema, key design, and access patterns.
+
 ## Build
 
 ### Prerequisites
