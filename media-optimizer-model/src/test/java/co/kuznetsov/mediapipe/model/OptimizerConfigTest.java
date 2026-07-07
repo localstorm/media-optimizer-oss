@@ -105,6 +105,37 @@ class OptimizerConfigTest {
     }
 
     @Test
+    void supportsCompressionDefaultsToTrueWhenAbsent() throws Exception {
+        OptimizerConfig config = OptimizerConfig.fromXml(SAMPLE_XML);
+
+        for (ChannelSubscription sub : config.getSubscriptions()) {
+            assertTrue(sub.isSupportsCompression());
+        }
+    }
+
+    @Test
+    void deserializesSupportsCompressionFalse() throws Exception {
+        String xml = SAMPLE_XML.replace(
+            "<compression_factor>8</compression_factor>",
+            "<compression_factor>1</compression_factor><supports_compression>false</supports_compression>");
+        OptimizerConfig config = OptimizerConfig.fromXml(xml);
+
+        assertFalse(config.getSubscriptions().get(0).isSupportsCompression());
+    }
+
+    @Test
+    void allowsMissingCompressionFactorWhenCompressionUnsupported() throws Exception {
+        String xml = SAMPLE_XML.replace(
+            "<compression_factor>8</compression_factor>",
+            "<supports_compression>false</supports_compression>");
+        OptimizerConfig config = OptimizerConfig.fromXml(xml);
+
+        ChannelSubscription sub = config.getSubscriptions().get(0);
+        assertFalse(sub.isSupportsCompression());
+        assertEquals(0, sub.getCompressionFactor());
+    }
+
+    @Test
     void deserializesPromptsCorrectly() throws Exception {
         OptimizerConfig config = OptimizerConfig.fromXml(SAMPLE_XML);
 

@@ -21,6 +21,9 @@ public final class ChannelSubscription {
     @JacksonXmlProperty(localName = "compression_factor")
     private int compressionFactor;
 
+    @JacksonXmlProperty(localName = "supports_compression")
+    private boolean supportsCompression = true;
+
     @JacksonXmlProperty(localName = "prompt_extra_ref")
     private String promptExtraRef;
 
@@ -83,6 +86,14 @@ public final class ChannelSubscription {
 
     public void setCompressionFactor(int compressionFactor) {
         this.compressionFactor = compressionFactor;
+    }
+
+    public boolean isSupportsCompression() {
+        return supportsCompression;
+    }
+
+    public void setSupportsCompression(boolean supportsCompression) {
+        this.supportsCompression = supportsCompression;
     }
 
     public String getPromptExtraRef() {

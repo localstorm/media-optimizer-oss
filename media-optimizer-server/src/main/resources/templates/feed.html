@@ -82,6 +82,7 @@
     #submit-text-compression:focus::-webkit-slider-thumb { box-shadow: 0 0 0 3px #4a90d9; }
     #submit-text-compression::-webkit-slider-runnable-track { border-radius: 2px; }
     #submit-text-compression::-moz-range-track { height: 4px; border-radius: 2px; background: #2d3748; }
+    #submit-compression:disabled, #submit-text-compression:disabled { opacity: 0.4; cursor: not-allowed; }
     #submit-btn { width: 100%; margin-top: 1rem; padding: 0.6rem; background: #4a90d9; border: none; border-radius: 6px; color: #fff; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
     #submit-btn:hover { background: #357abd; }
     #submit-btn:active { background: #2a6099; }
@@ -186,15 +187,18 @@
       <div id="submit-error"></div>
       <div class="submit-slider-row">
         <span class="submit-slider-label">Compression</span>
-        <input id="submit-compression" type="range" min="1" max="20" value="5" style="--val:5" oninput="this.style.setProperty('--val',this.value);document.getElementById('submit-compression-val').textContent=this.value+'x'"/>
+        <input id="submit-compression" type="range" min="1" max="20" value="5" style="--val:5"
+               th:attr="data-supports-compression=${defaultVideoChannelSupportsCompression}"
+               oninput="this.style.setProperty('--val',this.value);document.getElementById('submit-compression-val').textContent=this.value+'x'"/>
         <span id="submit-compression-val" class="submit-slider-value">5x</span>
       </div>
       <button id="submit-btn" onclick="submitVideo()">Submit</button>
     </div>
 
     <div class="submit-panel" id="panel-text" th:if="${not #lists.isEmpty(submissionChannels)}">
-      <select id="submit-text-channel" class="submit-field">
-        <option th:each="ch : ${submissionChannels}" th:value="${ch}" th:text="${ch}"></option>
+      <select id="submit-text-channel" class="submit-field" onchange="updateTextCompressionAvailability()">
+        <option th:each="ch : ${submissionChannels}" th:value="${ch}" th:text="${ch}"
+                th:attr="data-supports-compression=${compressionSupportByChannel.get(ch)}"></option>
       </select>
       <input id="submit-text-title" type="text" class="submit-field" placeholder="Title" autocomplete="off" spellcheck="false"/>
       <textarea id="submit-text-body" class="submit-field" placeholder="Text content" spellcheck="false"></textarea>
@@ -729,21 +733,32 @@
     }
   }
 
+  function setCompressionSliderState(slider, valueSpan, supportsCompression) {
+    var value = supportsCompression ? 5 : 1;
+    slider.value = value;
+    slider.style.setProperty('--val', value);
+    slider.disabled = !supportsCompression;
+    valueSpan.textContent = value + 'x';
+  }
+
+  function updateTextCompressionAvailability() {
+    var channelEl = document.getElementById('submit-text-channel');
+    var slider = document.getElementById('submit-text-compression');
+    if (!channelEl || !slider) return;
+    var selectedOption = channelEl.options[channelEl.selectedIndex];
+    var supportsCompression = !selectedOption || selectedOption.getAttribute('data-supports-compression') !== 'false';
+    setCompressionSliderState(slider, document.getElementById('submit-text-compression-val'), supportsCompression);
+  }
+
   function openSubmitDialog() {
     var input = document.getElementById('submit-url');
     input.value = '';
     input.classList.remove('invalid');
     document.getElementById('submit-error').textContent = '';
     var slider = document.getElementById('submit-compression');
-    slider.value = 5;
-    slider.style.setProperty('--val', 5);
-    document.getElementById('submit-compression-val').textContent = '5x';
-    var textSlider = document.getElementById('submit-text-compression');
-    if (textSlider) {
-      textSlider.value = 5;
-      textSlider.style.setProperty('--val', 5);
-      document.getElementById('submit-text-compression-val').textContent = '5x';
-    }
+    var sliderSupportsCompression = slider.getAttribute('data-supports-compression') !== 'false';
+    setCompressionSliderState(slider, document.getElementById('submit-compression-val'), sliderSupportsCompression);
+    updateTextCompressionAvailability();
     var titleEl = document.getElementById('submit-text-title');
     if (titleEl) { titleEl.value = ''; titleEl.classList.remove('invalid'); }
     var bodyEl = document.getElementById('submit-text-body');

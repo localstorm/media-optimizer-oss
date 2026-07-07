@@ -77,9 +77,23 @@ public class FeedController {
                 .map(ChannelSubscription::getName).sorted()
         ).toList();
 
+        java.util.Map<String, Boolean> compressionSupportByChannel = subscriptions == null
+            ? java.util.Map.of()
+            : subscriptions.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                    ChannelSubscription::getName,
+                    ChannelSubscription::isSupportsCompression,
+                    (a, b) -> a));
+
+        String defaultVideoChannel = configHolder.get().getSettings().getDefaultVideoSubmissionChannel();
+        boolean defaultVideoChannelSupportsCompression = compressionSupportByChannel
+            .getOrDefault(defaultVideoChannel, true);
+
         model.addAttribute("items", items);
         model.addAttribute("channels", channels);
         model.addAttribute("submissionChannels", submissionChannels);
+        model.addAttribute("compressionSupportByChannel", compressionSupportByChannel);
+        model.addAttribute("defaultVideoChannelSupportsCompression", defaultVideoChannelSupportsCompression);
         return "feed";
     }
 

@@ -203,7 +203,7 @@ final class OptimizerConfigValidator {
                     errors.add(loc + " (channel='" + s.getChannelId() + "'): compression_factor must be > 0 for VIRTUAL channels");
                 }
             } else {
-                if (s.getFeedsInto() == null && s.getCompressionFactor() <= 0) {
+                if (s.getFeedsInto() == null && s.isSupportsCompression() && s.getCompressionFactor() <= 0) {
                     errors.add(loc + " (channel='" + s.getChannelId() + "'): compression_factor must be > 0");
                 }
                 if (s.getPromptExtraRef() != null && !promptNames.contains(s.getPromptExtraRef())) {

@@ -50,6 +50,17 @@
       <digest_mode>false</digest_mode>
     </subscription>
 
+    <!-- Example: submission channel with compression disabled (verbatim narration, dial locked to 1x) -->
+    <subscription>
+      <source_type>SUBMISSIONS</source_type>
+      <channel_id>ExampleVerbatim</channel_id>
+      <name>Example Verbatim</name>
+      <compression_factor>1</compression_factor>
+      <supports_compression>false</supports_compression>
+      <prompt_ref>default_publications</prompt_ref>
+      <digest_mode>false</digest_mode>
+    </subscription>
+
     <!-- Example: Telegram channel with evening digest -->
     <subscription>
       <source_type>TELEGRAM</source_type>
