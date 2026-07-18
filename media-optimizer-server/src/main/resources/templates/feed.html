@@ -42,10 +42,10 @@
     #submit-toggle { color: #90cdf4; font-size: 1rem; }
     #submit-toggle:hover { color: #e2e8f0; }
 
-    /* Latest button */
-    #latest-toggle { color: #90cdf4; font-size: 1rem; }
-    #latest-toggle:hover { color: #e2e8f0; }
-    #latest-toggle.active { border-color: #4a90d9; }
+    /* Visibility button */
+    #visibility-toggle { color: #90cdf4; font-size: 1rem; }
+    #visibility-toggle:hover { color: #e2e8f0; }
+    #visibility-toggle.has-filter { border-color: #4a90d9; }
 
     /* Submit dialog */
     #submit-dialog-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: flex-start; justify-content: center; padding-top: 5rem; }
@@ -92,7 +92,7 @@
 
     /* Dropdown panel */
     .filter-panel-wrap { position: relative; }
-    #filter-panel {
+    #filter-panel, #visibility-panel {
       display: none;
       position: absolute;
       right: 0;
@@ -105,10 +105,14 @@
       z-index: 100;
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
-    #filter-panel.open { display: block; }
+    #filter-panel.open, #visibility-panel.open { display: block; }
     .channel-btn { display: block; width: 100%; background: none; border: none; cursor: pointer; text-align: left; padding: 0.45rem 0.65rem; border-radius: 6px; font-size: 0.82rem; color: #718096; transition: background 0.12s, color 0.12s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .channel-btn:hover { background: #2d3748; color: #e2e8f0; }
     .channel-btn.active { background: #2d3748; color: #90cdf4; font-weight: 600; }
+
+    .visibility-item { display: flex; align-items: center; gap: 0.55rem; width: 100%; background: none; border: none; cursor: pointer; text-align: left; padding: 0.45rem 0.65rem; border-radius: 6px; font-size: 0.82rem; color: #e2e8f0; transition: background 0.12s; white-space: nowrap; }
+    .visibility-item:hover { background: #2d3748; }
+    .visibility-item input[type="checkbox"] { accent-color: #4a90d9; width: 0.95rem; height: 0.95rem; flex-shrink: 0; cursor: pointer; }
 
 
     main { flex: 1; max-width: 860px; width: 100%; padding: 1.5rem 1.25rem; margin: 0 auto; }
@@ -150,12 +154,25 @@
     <span id="play-all-emoji">&#9654;</span>
   </button>
   <button id="submit-toggle" class="header-btn" onclick="openSubmitDialog()" title="Submit video">&#8853;</button>
-  <button id="latest-toggle" class="header-btn" onclick="toggleLatest()" title="Latest (24h)">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/>
-      <path d="M7 4v3.25l2 1.25" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-    </svg>
-  </button>
+  <div class="filter-panel-wrap">
+    <button id="visibility-toggle" class="header-btn" onclick="toggleVisibilityPanel()" aria-expanded="false" aria-controls="visibility-panel" title="Visibility filter">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M1 7.5C2.4 4.6 4.7 3 7.5 3s5.1 1.6 6.5 4.5C12.6 10.4 10.3 12 7.5 12S2.4 10.4 1 7.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+        <circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M1.5 13.5l12-12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div id="visibility-panel" role="menu">
+      <label class="visibility-item">
+        <input type="checkbox" id="visibility-hide-older" checked onchange="onVisibilityChange()"/>
+        Older than 24h
+      </label>
+      <label class="visibility-item">
+        <input type="checkbox" id="visibility-hide-played" checked onchange="onVisibilityChange()"/>
+        Already played
+      </label>
+    </div>
+  </div>
   <div class="filter-panel-wrap" th:if="${not #lists.isEmpty(channels)}">
     <button id="filter-toggle" class="header-btn" onclick="togglePanel()" aria-expanded="false" aria-controls="filter-panel" title="Filter by channel">
       <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -262,18 +279,24 @@
     el.textContent = timeAgo(el.dataset.ts);
   });
 
-  var latestActive = true;
+  var hideOlderActive = true;
+  var hidePlayedActive = true;
   var LATEST_MS = 24 * 60 * 60 * 1000;
 
-  function isLatest(el) {
+  function isOld(el) {
     var ms = el.dataset.createdMillis;
-    return ms && (Date.now() - parseInt(ms, 10)) < LATEST_MS;
+    return !ms || (Date.now() - parseInt(ms, 10)) >= LATEST_MS;
+  }
+
+  function isPlayed(el) {
+    return el.classList.contains('played');
   }
 
   function applyVisibility(el, channel) {
     var channelMatch = (channel === 'all' || el.dataset.channel === channel);
-    var latestMatch = !latestActive || isLatest(el);
-    el.style.display = (channelMatch && latestMatch) ? '' : 'none';
+    var olderMatch = !hideOlderActive || !isOld(el);
+    var playedMatch = !hidePlayedActive || !isPlayed(el);
+    el.style.display = (channelMatch && olderMatch && playedMatch) ? '' : 'none';
   }
 
   function activeChannel() {
@@ -294,15 +317,29 @@
     items.forEach(function(el) { main.appendChild(el); });
   }
 
-  function toggleLatest() {
-    latestActive = !latestActive;
-    document.getElementById('latest-toggle').classList.toggle('active', latestActive);
+  function onVisibilityChange() {
+    hideOlderActive = document.getElementById('visibility-hide-older').checked;
+    hidePlayedActive = document.getElementById('visibility-hide-played').checked;
+    document.getElementById('visibility-toggle').classList.toggle('has-filter', hideOlderActive || hidePlayedActive);
     refilter();
+  }
+
+  function toggleVisibilityPanel() {
+    const panel = document.getElementById('visibility-panel');
+    const btn = document.getElementById('visibility-toggle');
+    const filterPanel = document.getElementById('filter-panel');
+    const filterToggle = document.getElementById('filter-toggle');
+    if (filterPanel) filterPanel.classList.remove('open');
+    if (filterToggle) filterToggle.setAttribute('aria-expanded', 'false');
+    const open = panel.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open);
   }
 
   function togglePanel() {
     const panel = document.getElementById('filter-panel');
     const btn = document.getElementById('filter-toggle');
+    document.getElementById('visibility-panel').classList.remove('open');
+    document.getElementById('visibility-toggle').setAttribute('aria-expanded', 'false');
     const open = panel.classList.toggle('open');
     btn.setAttribute('aria-expanded', open);
   }
@@ -324,17 +361,19 @@
     toggle.classList.toggle('has-filter', channel !== 'all');
   }
 
-  // Apply Latest filter by default on page load
-  document.getElementById('latest-toggle').classList.add('active');
+  // Apply Visibility filter by default on page load
+  document.getElementById('visibility-toggle').classList.add('has-filter');
   refilter();
 
-  // Close panel when clicking outside
+  // Close panels when clicking outside their wrapper
   document.addEventListener('click', function(e) {
-    const wrap = document.querySelector('.filter-panel-wrap');
-    if (wrap && !wrap.contains(e.target)) {
-      document.getElementById('filter-panel').classList.remove('open');
-      document.getElementById('filter-toggle').setAttribute('aria-expanded', 'false');
-    }
+    document.querySelectorAll('.filter-panel-wrap').forEach(function(wrap) {
+      if (wrap.contains(e.target)) return;
+      const panel = wrap.querySelector('[id$="-panel"]');
+      const btn = wrap.querySelector('.header-btn');
+      if (panel) panel.classList.remove('open');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
   });
 
   // Background feed refresh
@@ -677,6 +716,8 @@
     if (item) markItemPlayed(item);
   }, true);
 
+  var PLAYED_HIDE_DELAY_MS = 500;
+
   function markItemPlayed(item) {
     item.classList.add('played');
     var btn = item.querySelector('.played-btn');
@@ -686,6 +727,9 @@
     if (channelId && videoId) {
       fetch('/api/feed/' + encodeURIComponent(channelId) + '/' + encodeURIComponent(videoId) + '/played', { method: 'POST' })
         .catch(function() { /* silent */ });
+    }
+    if (hidePlayedActive) {
+      setTimeout(function() { applyVisibility(item, activeChannel()); }, PLAYED_HIDE_DELAY_MS);
     }
   }
 
