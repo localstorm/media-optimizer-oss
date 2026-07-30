@@ -14,6 +14,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -103,15 +104,17 @@ public class FeedController {
         return loadFeedItems();
     }
 
-    @PostMapping("/api/feed/{channelId}/{videoId}/played")
+    @PostMapping("/api/feed/{channelId}/played")
     @ResponseBody
     public ResponseEntity<Void> markPlayed(
             @PathVariable("channelId") String channelId,
-            @PathVariable("videoId") String videoId) {
-        LOG.info("markPlayed: channelId={} videoId={}", channelId, videoId);
-        mediaIndex.markFeedPlayed(channelId, videoId);
+            @RequestBody MarkPlayedRequest request) {
+        LOG.info("markPlayed: channelId={} videoId={}", channelId, request.videoId());
+        mediaIndex.markFeedPlayed(channelId, request.videoId());
         return ResponseEntity.ok().build();
     }
+
+    public record MarkPlayedRequest(String videoId) { }
 
     private List<FeedItem> loadFeedItems() {
         List<MediaRecord> records = mediaIndex.queryRecentFeed(FEED_WINDOW_DAYS);

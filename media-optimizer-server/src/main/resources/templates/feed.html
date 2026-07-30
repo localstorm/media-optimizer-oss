@@ -725,8 +725,11 @@
     var channelId = item.dataset.channelId;
     var videoId = item.dataset.videoId;
     if (channelId && videoId) {
-      fetch('/api/feed/' + encodeURIComponent(channelId) + '/' + encodeURIComponent(videoId) + '/played', { method: 'POST' })
-        .catch(function() { /* silent */ });
+      fetch('/api/feed/' + encodeURIComponent(channelId) + '/played', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId: videoId })
+      }).catch(function() { /* silent */ });
     }
     if (hidePlayedActive) {
       setTimeout(function() { applyVisibility(item, activeChannel()); }, PLAYED_HIDE_DELAY_MS);
