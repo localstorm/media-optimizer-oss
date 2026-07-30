@@ -30,7 +30,7 @@ public final class ChannelTextFetchJob implements Job {
     static final String KEY_TIMEZONE = "timezone";
 
     private static final Logger LOG = LoggerFactory.getLogger(ChannelTextFetchJob.class);
-    private static final long LOOKBACK_MILLIS = 24L * 60 * 60 * 1000;
+    private static final long LOOKBACK_MILLIS = 2L * 24 * 60 * 60 * 1000;
     private static final DateTimeFormatter HUMAN_DATE_BASE = DateTimeFormatter
         .ofLocalizedDateTime(FormatStyle.LONG)
         .withLocale(Locale.ENGLISH);
