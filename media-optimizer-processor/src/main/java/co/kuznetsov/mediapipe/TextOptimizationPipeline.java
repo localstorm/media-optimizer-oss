@@ -40,6 +40,7 @@ public class TextOptimizationPipeline {
      */
     public MediaOptimizationResult process(TextOptimizationJob job) throws Exception {
         String mediaId = job.mediaId();
+        String fileSlug = sanitizeForFilename(mediaId);
         LOG.info("Processing text job: mediaId={}, channel={}", mediaId, job.channelName());
 
         Path outputDir = job.outputDir() != null ? job.outputDir() : config.outputDir();
@@ -52,7 +53,7 @@ public class TextOptimizationPipeline {
         int wordCount = narration.split("\\s+").length;
         LOG.info("Narration: {} words", wordCount);
 
-        Path narrationFile = outputDir.resolve(mediaId + ".txt");
+        Path narrationFile = outputDir.resolve(fileSlug + ".txt");
         Files.writeString(narrationFile, narration);
         LOG.info("Narration saved: {}", narrationFile);
 
@@ -64,7 +65,7 @@ public class TextOptimizationPipeline {
         // Step 2 — TTS
         LOG.info("Step 2: Generating audio...");
         TtsGenerator tts = new TtsGenerator(config, healthStatus);
-        Path audioFile = outputDir.resolve(mediaId + ".mp3");
+        Path audioFile = outputDir.resolve(fileSlug + ".mp3");
         long outputTimeSeconds = tts.generate(narration, audioFile);
         LOG.info("Audio saved: {} ({}KB, {}s)", audioFile, Files.size(audioFile) / 1024, outputTimeSeconds);
 
@@ -73,9 +74,19 @@ public class TextOptimizationPipeline {
         if (config.s3Bucket() != null && !config.s3Bucket().isBlank()) {
             LOG.info("Step 3: Uploading to S3...");
             MediaUploader uploader = new MediaUploader(config.s3Bucket(), config.awsRegion());
-            s3Key = uploader.upload(audioFile, mediaId, System.currentTimeMillis());
+            s3Key = uploader.upload(audioFile, fileSlug, System.currentTimeMillis());
         }
 
         return new MediaOptimizationResult(mediaId, narrationFile, audioFile, s3Key, outputTimeSeconds, job.text(), narration);
+    }
+
+    /**
+     * Media IDs for text sources (e.g. RSS/Atom) are entry URLs/URIs, which contain
+     * characters ({@code /}, {@code :}) that are unsafe as filenames or S3 key segments.
+     * Replace anything outside a safe set with '-' so the ID stays usable as a single
+     * path/key segment.
+     */
+    private static String sanitizeForFilename(String mediaId) {
+        return mediaId.replaceAll("[^A-Za-z0-9._-]+", "-");
     }
 }

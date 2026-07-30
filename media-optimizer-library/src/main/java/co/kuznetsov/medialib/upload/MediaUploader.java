@@ -42,14 +42,14 @@ public final class MediaUploader {
      * Uploads the given MP3 file to S3 and returns the S3 key.
      *
      * @param audioFile local path to the MP3 file
-     * @param videoId   YouTube video ID used as the filename
+     * @param mediaId   filesystem/key-safe media ID used as the filename
      * @param publishedAt epoch millis of the video's publish date, used for the date prefix
      * @return the S3 key the file was uploaded to
      * @throws Exception if all upload attempts fail
      */
-    public String upload(Path audioFile, String videoId, long publishedAt) throws Exception {
+    public String upload(Path audioFile, String mediaId, long publishedAt) throws Exception {
         String date = DATE_FMT.format(Instant.ofEpochMilli(publishedAt));
-        String key = "media/" + date + "/" + videoId + ".mp3";
+        String key = "media/" + date + "/" + mediaId + ".mp3";
 
         LOG.info("Uploading {} to s3://{}/{}", audioFile.getFileName(), bucket, key);
         PutObjectRequest request = PutObjectRequest.builder()
