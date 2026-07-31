@@ -722,6 +722,8 @@
     item.classList.add('played');
     var btn = item.querySelector('.played-btn');
     if (btn) btn.classList.add('done');
+    var audio = item.querySelector('audio');
+    if (audio && !audio.paused) audio.pause();
     var channelId = item.dataset.channelId;
     var videoId = item.dataset.videoId;
     if (channelId && videoId) {
