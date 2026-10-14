@@ -6,6 +6,7 @@ import com.anthropic.models.messages.ContentBlock;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
+import com.anthropic.models.messages.ThinkingConfigDisabled;
 import co.kuznetsov.medialib.util.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +87,7 @@ public class Narrator {
                                 .model(Model.of(model))
                                 .maxTokens(maxTokens)
                                 .addUserMessage(prompt)
+                                .thinking(ThinkingConfigDisabled.builder().build())
                                 .build()
                 )
         );
@@ -119,6 +121,7 @@ public class Narrator {
                                 .model(Model.of(model))
                                 .maxTokens(maxTokens)
                                 .addUserMessage(prompt)
+                                .thinking(ThinkingConfigDisabled.builder().build())
                                 .build()
                 )
         );
@@ -148,6 +151,7 @@ public class Narrator {
                                 .model(Model.of(model))
                                 .maxTokens(100)
                                 .addUserMessage(prompt)
+                                .thinking(ThinkingConfigDisabled.builder().build())
                                 .build()
                 )
         );
