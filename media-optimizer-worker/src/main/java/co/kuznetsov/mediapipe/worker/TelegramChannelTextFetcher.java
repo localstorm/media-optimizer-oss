@@ -7,8 +7,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,12 +50,23 @@ public final class TelegramChannelTextFetcher implements ChannelTextFetcher {
             );
 
             Process process = new ProcessBuilder(cmd)
-                .redirectErrorStream(false)
+                .redirectErrorStream(true)
                 .start();
+
+            String output;
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append(System.lineSeparator());
+                }
+                output = sb.toString();
+            }
 
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                LOG.error("tdl exited with code {} for channel @{}", exitCode, username);
+                LOG.error("tdl exited with code {} for channel @{}: {}", exitCode, username, output.strip());
                 return Collections.emptyList();
             }
 
